@@ -1,5 +1,5 @@
 # 10% buffer, 1:1 downside beyond it; uncapped upside participation solved.
-underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_chained}
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_index}
 product:
   kind: buffered
   tenor: 0.25

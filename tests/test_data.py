@@ -5,8 +5,8 @@ import pytest
 from compute_options.data.aggregate import (
     AggregationConfig,
     build,
-    chained_index,
     composite_levels,
+    price_index,
     provider_prices,
 )
 from compute_options.data.schemas import validate_observations
@@ -96,23 +96,52 @@ def test_index_sources_are_not_averaged_into_composite():
     assert out["benchmarks"].loc["2026-09-01", "ornn:H100_SXM"] == 2.5
 
 
-def test_chained_index_ignores_composition_changes_and_bad_steps():
+def _index_rows(days, prices):
     rows = []
-    for d in pd.date_range("2026-09-01", periods=4):
-        for p, px in {"a": 2.0, "b": 2.2, "c": 2.4}.items():
-            rows.append((d, "x", p, "H100_SXM", "on_demand", px))
-    # A cheap provider appears on day 3 (level drops, true prices unchanged) and provider "a"
-    # reports a per-instance price on day 4 (x8, a data error).
-    rows.append((pd.Timestamp("2026-09-03"), "x", "cheap", "H100_SXM", "on_demand", 1.0))
-    rows.append((pd.Timestamp("2026-09-04"), "x", "cheap", "H100_SXM", "on_demand", 1.0))
-    rows = [r for r in rows if not (r[0] == pd.Timestamp("2026-09-04") and r[2] == "a")]
-    rows.append((pd.Timestamp("2026-09-04"), "x", "a", "H100_SXM", "on_demand", 16.0))
-    cfg = AggregationConfig(min_providers=1, trim=0.0)
+    for i, d in enumerate(pd.date_range("2026-09-01", periods=days)):
+        for p, px in prices(i).items():
+            if px is not None:
+                rows.append((d, "x", p, "H100_SXM", "on_demand", px))
+    return rows
+
+
+def _fit(rows, **kw):
+    cfg = AggregationConfig(min_providers=1, smoothing_days=1, **kw)
     prov = provider_prices(obs(rows), cfg)
-    levels = composite_levels(prov, cfg)
-    chained = chained_index(prov, levels, cfg).set_index("date")["price"]
-    assert levels.set_index("date")["price"].nunique() > 1
-    assert np.allclose(chained, chained.iloc[0])
+    return price_index(prov, composite_levels(prov, cfg), cfg).set_index("date")["price"]
+
+
+BASE = {"a": 2.0, "b": 2.2, "c": 2.4, "d": 2.6, "e": 2.8}
+
+
+def test_index_ignores_providers_entering_and_leaving():
+    # A cheap provider quotes only on days 3-5: the level composite drops, true prices don't.
+    rows = _index_rows(8, lambda i: BASE | {"cheap": 1.0 if 3 <= i <= 5 else None})
+    idx = _fit(rows)
+    assert np.allclose(idx, idx.iloc[0], rtol=1e-6)
+
+
+def test_index_follows_sticky_repricings():
+    # One provider of five reprices +50% on day 4 and holds: a median would stay flat.
+    rows = _index_rows(8, lambda i: BASE | {"a": 3.0 if i >= 4 else 2.0})
+    idx = _fit(rows)
+    assert idx.iloc[-1] / idx.iloc[0] == pytest.approx(np.exp(np.log(1.5) / 5), rel=1e-3)
+
+
+def test_index_counts_moves_made_while_a_provider_was_missing():
+    # Provider "a" disappears for days 3-5 and returns 50% higher; a day-to-day chain misses it.
+    rows = _index_rows(9, lambda i: BASE | {"a": None if 3 <= i <= 5 else (3.0 if i > 5 else 2.0)})
+    idx = _fit(rows)
+    assert idx.iloc[-1] / idx.iloc[0] == pytest.approx(np.exp(np.log(1.5) / 5), rel=1e-3)
+
+
+def test_index_limits_a_single_bad_print():
+    # Provider "a" reports a per-instance price (x8) on one day.
+    rows = _index_rows(8, lambda i: BASE | {"a": 16.0 if i == 4 else 2.0})
+    clipped = np.log(_fit(rows, clip=0.3)).diff().abs().max()
+    unclipped = np.log(_fit(rows, clip=10.0)).diff().abs().max()
+    assert unclipped == pytest.approx(np.log(8) / 5, rel=0.05)
+    assert clipped < 0.1 < unclipped
 
 
 def test_store_upsert_is_idempotent(tmp_path):

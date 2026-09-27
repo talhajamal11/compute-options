@@ -1,7 +1,7 @@
 # 100% capital-protected note on H100: participation solved so fair value = 100% - 1% margin.
 underlying:
   # Ornn OCPI: transaction-based, the kind of index listed futures settle on. Posted-price
-  # composites (series: composite_chained / composite_level, instrument: H100_SXM, B200, ...)
+  # composites (series: composite_index / composite_level, instrument: H100_SXM, B200, ...)
   # have longer history but understate volatility because list prices are sticky.
   instrument: ornn:H100_SXM
   series: benchmarks

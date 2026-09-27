@@ -22,11 +22,15 @@ def value_and_delta(
     return v, (up - dn) / (2 * BUMP * fwd_r)
 
 
-def mark_to_market(note: IssuedNote, builder: MarketBuilder) -> pd.DataFrame:
-    """One row per calendar day. Columns: T (years left), spot, R, forward_R (the maturity-matched
-    futures price in R units), value, delta_notional, rate (issuer zero rate), matured."""
-    last = builder.index.index[-1]
-    end = min(note.maturity_date, last)
+def mark_to_market(
+    note: IssuedNote, builder: MarketBuilder, until: pd.Timestamp | None = None
+) -> pd.DataFrame:
+    """One row per calendar day from issue to maturity, stopping early at ``until`` or the last
+    data date. Columns: T (years left), spot, R, forward_R (the maturity-matched futures price in
+    R units), value, delta_notional, rate (issuer zero rate), matured."""
+    end = min(note.maturity_date, builder.index.index[-1])
+    if until is not None:
+        end = min(end, pd.Timestamp(until))
     rows = []
     for date in pd.date_range(note.issue_date, end, freq="D"):
         T = max((note.maturity_date - date).days / 365.0, 0.0)

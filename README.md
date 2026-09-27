@@ -13,7 +13,7 @@ uv sync
 uv run compute-options download          # all sources + FRED rates -> data/raw/*.parquet
 uv run compute-options aggregate         # composite series per GPU -> data/processed/
 uv run compute-options price configs/products/capital_protected.yaml
-uv run compute-options backtest configs/products/buffered.yaml --series composite_chained --instrument B200
+uv run compute-options backtest configs/products/buffered.yaml --series composite_index --instrument B200
 uv run compute-options backtest configs/products/capital_protected.yaml --synthetic 20
 uv run pytest                            # unit tests; `-m network` hits live endpoints
 ```
@@ -31,7 +31,7 @@ src/compute_options/
 │   ├── schemas.py        standard observation schema: date, source, provider, instrument, tier, $/GPU-hr
 │   ├── symbology.py      source GPU names -> standard ids (H100_SXM, B200, ...)
 │   ├── store.py          Parquet storage: raw per source, processed frames
-│   ├── aggregate.py      provider de-duplication, composite level, chain-linked index
+│   ├── aggregate.py      provider de-duplication, composite level, price index (time-product dummy)
 │   └── rates.py          FRED Treasury yields and SOFR
 ├── market/               2. MARKET OBJECTS
 │   ├── forward_curve.py  flat, Schwartz mean-reverting, interpolated from futures quotes
@@ -83,10 +83,13 @@ writing one `Source` subclass.
   reverts within days (about 39% on weekly returns). Price options on the benchmark that futures
   will settle on (Ornn/ICE, Silicon Data/CME, Compute Desk/Architect) and use composites for
   longer history and cross-checks.
-- **Chain-linking.** The level composite jumps when a cheap provider starts or stops being
-  quoted. The chained index only uses price changes of providers quoted on consecutive days, and
-  ignores single-provider moves larger than 2× in a day, which are unit errors such as
-  per-instance vs per-GPU prices.
+- **Price index.** The level composite jumps when a cheap provider starts or stops being quoted.
+  `composite_index` fits `log price = date effect + provider effect` over all prices at once (the
+  time-product-dummy method), with residuals clipped so a single bad print has limited effect.
+  Day-to-day chaining and median-based indices were tried and rejected: posted prices are
+  sticky, so medians ignore the few providers that reprice, and chaining misses moves made while
+  a provider is absent. Both showed H100 flat or falling from March to September 2026, while
+  the providers quoted on both dates rose a median 15%. The index shows +17%.
 - **Volatility.** Use `vol_horizon_days: 7` to estimate from overlapping weekly returns. The
   two-factor model (persistent level plus transient noise) separates the two on long samples, but
   a few months of data barely identify the long-run volatility, so `--sigma-long` lets you set it

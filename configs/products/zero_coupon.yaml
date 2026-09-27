@@ -1,5 +1,5 @@
 # Zero-coupon note: redemption solved at par gives the issuer's yield. No compute exposure.
-underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_chained}
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_index}
 product:
   kind: zero_coupon
   tenor: 1.0

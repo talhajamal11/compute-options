@@ -1,5 +1,5 @@
 # Absolute return on falls down to the barrier (observed at maturity); barrier solved.
-underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_chained}
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_index}
 product:
   kind: dual_directional
   tenor: 0.25

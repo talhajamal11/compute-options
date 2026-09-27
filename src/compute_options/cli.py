@@ -89,7 +89,7 @@ def cmd_series(args: argparse.Namespace) -> None:
     store = ObservationStore(args.data_dir)
     level = store.read_frame("composite_level")
     n_prov = store.read_frame("composite_n_providers")
-    chained = store.read_frame("composite_chained")
+    index = store.read_frame("composite_index")
     rows = []
     for inst in level.columns:
         s = level[inst].dropna()
@@ -101,7 +101,7 @@ def cmd_series(args: argparse.Namespace) -> None:
                 "days": len(s),
                 "providers(last)": int(n_prov[inst].dropna().iloc[-1]),
                 "level": s.iloc[-1],
-                "chained": chained[inst].dropna().iloc[-1] if inst in chained else float("nan"),
+                "index": index[inst].dropna().iloc[-1] if inst in index else float("nan"),
             }
         )
     table = pd.DataFrame(rows).sort_values("days", ascending=False).set_index("instrument")
@@ -115,13 +115,13 @@ def cmd_series(args: argparse.Namespace) -> None:
 
 
 def load_underlying(store: ObservationStore, spec: dict, args: argparse.Namespace) -> pd.Series:
-    """``{"instrument": "H100_SXM", "series": "composite_chained"}`` -> price series.
+    """``{"instrument": "H100_SXM", "series": "composite_index"}`` -> price series.
     ``--series`` / ``--instrument`` on the command line override the config."""
     spec = {
         **spec,
         **{k: getattr(args, k) for k in ("series", "instrument") if getattr(args, k, None)},
     }
-    frame = store.read_frame(spec.get("series", "composite_chained"))
+    frame = store.read_frame(spec.get("series", "composite_index"))
     inst = spec["instrument"]
     if inst not in frame:
         sys.exit(f"{inst} not in {spec.get('series')}; available: {list(frame.columns)}")
@@ -269,7 +269,7 @@ def main(argv: list[str] | None = None) -> None:
     pr.add_argument("config")
     pr.add_argument("--date", help="valuation date (default: last available)")
     for sp in (pr,):
-        sp.add_argument("--series", help="override underlying series, e.g. composite_chained")
+        sp.add_argument("--series", help="override underlying series, e.g. composite_index")
         sp.add_argument("--instrument", help="override underlying instrument, e.g. B200")
     pr.set_defaults(fn=cmd_price)
 
@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> None:
         help="dynamics for --synthetic",
     )
     b.add_argument("--sigma-long", type=float, help="override the fitted persistent vol")
-    b.add_argument("--series", help="override underlying series, e.g. composite_chained")
+    b.add_argument("--series", help="override underlying series, e.g. composite_index")
     b.add_argument("--instrument", help="override underlying instrument, e.g. B200")
     b.set_defaults(fn=cmd_backtest)
 
