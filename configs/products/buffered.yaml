@@ -1,0 +1,13 @@
+# 10% buffer, 1:1 downside beyond it; uncapped upside participation solved.
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_chained}
+product:
+  kind: buffered
+  tenor: 0.25
+  buffer: 0.10
+  downside_gearing: 1.0
+  cap: null
+solve_for: participation
+issue_price: 1.0
+issuer_margin: 0.01
+market: {vol_method: realized, vol_window: 90, vol_horizon_days: 7, forward_model: flat, rate: null, issuer_spread: 0.01}
+backtest: {issue_every_days: 7, hedge: true}

@@ -1,0 +1,10 @@
+# Delta-one tracker; participation at par reflects the forward (roll) and discounting.
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_chained}
+product:
+  kind: tracker
+  tenor: 0.25
+solve_for: participation
+issue_price: 1.0
+issuer_margin: 0.005
+market: {vol_method: realized, vol_window: 90, vol_horizon_days: 7, forward_model: schwartz, rate: null, issuer_spread: 0.01}
+backtest: {issue_every_days: 7, hedge: true}
