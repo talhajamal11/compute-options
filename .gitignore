@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# compute-options local data and outputs
+/data/
+/outputs/

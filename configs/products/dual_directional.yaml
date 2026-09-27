@@ -1,0 +1,13 @@
+# Absolute return on falls down to the barrier (observed at maturity); barrier solved.
+underlying: {instrument: ornn:H100_SXM, series: benchmarks}   # or e.g. {instrument: B200, series: composite_index}
+product:
+  kind: dual_directional
+  tenor: 0.25
+  barrier: 0.80
+  participation: 1.0
+  cap: 1.2
+solve_for: barrier
+issue_price: 1.0
+issuer_margin: 0.01
+market: {vol_method: realized, vol_window: 90, vol_horizon_days: 7, forward_model: flat, rate: null, issuer_spread: 0.01}
+backtest: {issue_every_days: 7, hedge: true}
