@@ -177,6 +177,16 @@ def cmd_price(args: argparse.Namespace) -> None:
     print(fmt_frame(scenario_grid(product, market, s0)))
 
 
+def cmd_showcase(args: argparse.Namespace) -> None:
+    from compute_options.analytics.showcase import build
+
+    build(update_readme=not args.no_readme)
+    print(
+        "wrote docs/figures/*.png and docs/results.md"
+        + ("" if args.no_readme else "; README updated")
+    )
+
+
 def cmd_backtest(args: argparse.Namespace) -> None:
     from compute_options.analytics.reports import fmt_kv
     from compute_options.backtest import BacktestConfig, run_backtest
@@ -272,6 +282,10 @@ def main(argv: list[str] | None = None) -> None:
         sp.add_argument("--series", help="override underlying series, e.g. composite_index")
         sp.add_argument("--instrument", help="override underlying instrument, e.g. B200")
     pr.set_defaults(fn=cmd_price)
+
+    sc = sub.add_parser("showcase", help="structural curve, credit, quotes, governance -> docs/")
+    sc.add_argument("--no-readme", action="store_true", help="don't splice results into README")
+    sc.set_defaults(fn=cmd_showcase)
 
     b = sub.add_parser("backtest")
     b.add_argument("config")

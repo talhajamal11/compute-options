@@ -1,7 +1,7 @@
 [project]
 name = "compute-options"
 version = "0.1.0"
-description = "Market data, option pricing and structured-product backtesting on GPU compute rental prices."
+description = "Compute market data, structural forward curves, derivatives pricing, credit-linked trades and structured products on GPU-hour prices."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Talha Jamal" }]

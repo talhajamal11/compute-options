@@ -23,7 +23,9 @@ class MarketModelConfig:
     vol_floor: float = 0.10
     vol_cap: float = 2.0
     vol_markup: float = 0.0  # added to estimated vol: issuers price options above realized
-    forward_model: Literal["flat", "schwartz"] = "flat"
+    forward_model: Literal["flat", "schwartz", "structural"] = "flat"
+    structural_gpu: str | None = None  # assumptions to use when forward_model == "structural"
+    structural_draws: int = 1500
     kappa: float | None = None  # overrides the fitted mean-reversion speed
     min_history: int = 20  # observations needed before a date can be priced
     rate: float | None = None  # flat risk-free rate; None -> use FRED curve
@@ -56,6 +58,8 @@ class MarketBuilder:
 
     def _vol_and_forward(self, hist: pd.Series) -> tuple[VolModel, ForwardCurve]:
         cfg, spot = self.cfg, float(hist.iloc[-1])
+        if cfg.forward_model == "structural":
+            return self._structural(hist)
         kappa, theta = 0.0, float(np.log(spot))
         if cfg.vol_method == "ou" or cfg.forward_model == "schwartz":
             ou = fit_ou(hist.loc[hist.index[-1] - pd.Timedelta(days=max(cfg.vol_window, 30)) :])
@@ -76,6 +80,16 @@ class MarketBuilder:
             else FlatForward(spot)
         )
         return vol, fwd
+
+    def _structural(self, hist: pd.Series) -> tuple[VolModel, ForwardCurve]:
+        # Imported here: the structural package depends on market/, not the other way round.
+        from compute_options.structural import fit_posterior, posterior_vol
+
+        if not self.cfg.structural_gpu:
+            raise ValueError("forward_model='structural' needs structural_gpu in the config")
+        post = fit_posterior(hist, self.cfg.structural_gpu, n=self.cfg.structural_draws)
+        vol = posterior_vol(post, self.cfg.vol_floor, self.cfg.vol_cap)
+        return vol, post.curve
 
     def discount(self, date: pd.Timestamp) -> DiscountCurve:
         if self.cfg.rate is not None:

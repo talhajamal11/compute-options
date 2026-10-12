@@ -27,3 +27,18 @@ Notebooks are generated from `make_notebooks.py` (defaults live there); shared l
 **Data caveat.** Public H100 history starts 2026-02-11 and comes from posted list prices, which
 are sparse and sticky. The first note can be priced once 21 days of prices exist (early March).
 Annualised statistics come from about 7 months of data, so read them as illustrative.
+
+## Market data notebooks (`notebooks/market/`)
+
+| Notebook | Shows |
+|---|---|
+| `01_market_overview.ipynb` | Latest prices and changes for every GPU, price history per GPU (index, average posted, Ornn), all GPUs rebased to 100, rolling volatility, posted-vs-transacted premium, data coverage |
+| `02_gpu_deep_dive.ipynb` | One GPU (`GPU = "H100_SXM"`): every provider's daily price against the indices, price by provider, price by rental tier, distribution of price changes |
+
+```bash
+uv run python notebooks/market/make_market_notebooks.py --execute   # regenerate
+```
+
+Chart helpers live in `compute_options.analytics.market_viz`. Each GPU keeps one colour on
+every chart (from a colour-blind-validated palette), so charts show up to 8 GPUs; the summary
+table lists all of them.
