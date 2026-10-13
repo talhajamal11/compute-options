@@ -80,6 +80,8 @@ GPUS = ("H100_SXM", "B200")
 COUNTERPARTIES = tuple(CDS_ARCHETYPES)
 CP_COLORS = dict(zip(COUNTERPARTIES, PALETTE[:3], strict=True))
 START, END = "<!-- showcase:start -->", "<!-- showcase:end -->"
+SECTION_1 = "#1-forward-curve-with-no-forward-market"
+HEAD_START, HEAD_END = "<!-- headline:start -->", "<!-- headline:end -->"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -220,6 +222,48 @@ def fig_cost(ctx: Context) -> str:
     ax.set_title("Market price vs the cost of supplying a GPU-hour")
     ax.legend(ncol=4, loc="lower right", bbox_to_anchor=(1.0, -0.42))
     return _save(fig, ctx, "cost_stack")
+
+
+def fig_term_structure(ctx: Context) -> str:
+    """Forward price against delivery date: the headline chart."""
+    apply_style()
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.9))
+    ts = np.linspace(0.0, 3.0, 61)
+    for ax, g in zip(axes, GPUS, strict=True):
+        post, col = ctx.posts[g], gpu_color(g)
+        fwd = np.array([post.curve.forward(t) for t in ts])
+        band = np.array([post.curve.forward_quantiles(t, [0.05, 0.95]) for t in ts])
+        prior = np.array([post.prior.forward(t) for t in ts])
+        ax.fill_between(ts, band[:, 0], band[:, 1], color=col, alpha=0.2, linewidth=0)
+        ax.plot(ts, prior, color=MUTED, lw=1.2, ls=(0, (4, 3)))
+        ax.plot(ts, fwd, color=col, lw=2.2)
+        ax.scatter([0], [post.curve.spot], color=INK, s=28, zorder=5)
+        ax.annotate(
+            f"spot ${post.curve.spot:.2f}",
+            (0, post.curve.spot),
+            xytext=(8, 6),
+            textcoords="offset points",
+            fontsize=8.5,
+            color=INK_2,
+        )
+        _label_end(ax, ts[-1], fwd[-1], "forward")
+        _label_end(ax, ts[-1], prior[-1], "prior only", MUTED)
+        ax.set_xlabel("years to delivery")
+        ax.set_xlim(0, 3.6)
+        ax.set_title(f"{g} forward curve")
+        _dollars(ax)
+    axes[0].set_ylabel("$ per GPU-hour")
+    fig.text(
+        0.01,
+        -0.02,
+        "Line: posterior-weighted forward. Band: 5-95% spread of the forward across "
+        "parameter uncertainty. Dashed: forward from the assumptions alone, before "
+        "seeing the index.",
+        fontsize=8.5,
+        color=INK_2,
+    )
+    fig.tight_layout()
+    return _save(fig, ctx, "forward_curve")
 
 
 def fig_fan(ctx: Context) -> str:
@@ -800,6 +844,7 @@ def build(out_root: Path | None = None, update_readme: bool = True) -> str:
     post = ctx.posts[g]
 
     p_cost, p_fan, p_spread = fig_cost(ctx), fig_fan(ctx), fig_spread(ctx)
+    p_term = fig_term_structure(ctx)
     p_cva, cva_df = fig_cva(ctx)
     p_loan, loan_df = fig_loan(ctx)
     p_lad, lad_df = fig_ladder(ctx)
@@ -1084,13 +1129,29 @@ def build(out_root: Path | None = None, update_readme: bool = True) -> str:
     block = "\n".join(parts)
     (root / "docs").mkdir(exist_ok=True)
     (root / "docs" / "results.md").write_text(block)
+    headline = (
+        f"![Forward curves]({p_term})\n\n"
+        + md_table(
+            curve_table(ctx).loc[list(GPUS)],
+            {
+                "forward": "${:.2f}",
+                "vs spot": "{:+.0%}",
+                "param. 5%": "${:.2f}",
+                "param. 95%": "${:.2f}",
+                "prior-only": "${:.2f}",
+            },
+        )
+        + f"\n\n_Data to {d}. Method and assumptions in [section 1]({SECTION_1})._\n"
+    )
     if update_readme:
         readme = root / "README.md"
         text = readme.read_text()
-        if START in text and END in text:
-            head, rest = text.split(START, 1)
-            _, tail = rest.split(END, 1)
-            readme.write_text(f"{head}{START}\n\n{block}\n{END}{tail}")
+        for a, b, body in ((START, END, block), (HEAD_START, HEAD_END, headline)):
+            if a in text and b in text:
+                head, rest = text.split(a, 1)
+                _, tail = rest.split(b, 1)
+                text = f"{head}{a}\n\n{body}\n{b}{tail}"
+        readme.write_text(text)
     return block
 
 
