@@ -17,6 +17,25 @@ the results.
 The question it works on: *what is a forward on compute worth when there is only a noisy spot
 index, no traded forward, and a counterparty who might not deliver, and how sure are we?*
 
+<!-- headline:start -->
+
+![Forward curves](docs/figures/forward_curve.png)
+
+| GPU | tenor | forward | vs spot | param. 5% | param. 95% | prior-only |
+|---|---|---|---|---|---|---|
+| H100_SXM | 3M | $3.64 | -3% | $3.38 | $3.89 | $3.45 |
+| H100_SXM | 6M | $3.52 | -6% | $3.11 | $3.92 | $3.24 |
+| H100_SXM | 1Y | $3.27 | -13% | $2.71 | $3.87 | $2.92 |
+| H100_SXM | 2Y | $2.78 | -26% | $2.12 | $3.56 | $2.43 |
+| B200 | 3M | $6.68 | -5% | $6.17 | $7.16 | $5.90 |
+| B200 | 6M | $6.39 | -9% | $5.60 | $7.17 | $5.28 |
+| B200 | 1Y | $5.93 | -16% | $4.87 | $6.98 | $4.59 |
+| B200 | 2Y | $5.20 | -26% | $3.97 | $6.46 | $3.87 |
+
+_Data to 2026-09-26. Method and assumptions in [section 1](#1-forward-curve-with-no-forward-market)._
+
+<!-- headline:end -->
+
 | | What it does | Where |
 |---|---|---|
 | **1. Forward curve** | Cost-of-supply anchor, generational decay and scarcity-rent reversion; ensemble of curves reweighted by the index (Bayesian) | [`structural/`](src/compute_options/structural) |
